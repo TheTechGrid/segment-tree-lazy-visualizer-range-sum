@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Lazy Propagation Segment Tree Visualizer</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body { 
+      font-family: sans-serif; 
+      text-align: center; 
+      margin-top: 25px; 
+      background-color: #121212; 
+      color: #e0e0e0; 
+    }
+    
+    .panel { 
+      background: #1e1e1e; 
+      border: 1px solid #333;
+      border-radius: 8px; 
+      padding: 15px; 
+      margin: 10px auto; 
+      max-width: 900px; 
+      display: flex; 
+      flex-direction: column; 
+      justify-content: center; 
+      gap: 10px; 
+      align-items: center; 
+    }
+    
+    .panel-row {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .help-text {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 3px;
+    }
+
+    .legend {
+      font-size: 11px;
+      color: #aaa;
+      margin-top: 5px;
+    }
+    .legend span { margin: 0 8px; }
+    .color-tree { color: #4fc3f7; font-weight: bold; }
+    .color-lazy { color: #ffb74d; font-weight: bold; }
+    .color-updated { color: #81c784; font-weight: bold; }
+    
+    input[type="text"], input[type="number"] { 
+      background: #2c2c2c; 
+      color: #e0e0e0;
+      border: 1px solid #555;
+      border-radius: 4px;
+      padding: 5px;
+    }
+    input[type="text"] { width: 280px; }
+    input[type="number"] { width: 70px; }
+    
+    button { 
+      padding: 8px 16px; 
+      cursor: pointer; 
+      color: white; 
+      border: none; 
+      border-radius: 4px; 
+      font-weight: bold; 
+      transition: background 0.2s;
+    }
+    .btn-build { background: #3b82f6; }
+    .btn-build:hover { background: #2563eb; }
+    .btn-update { background: #ff9800; }
+    .btn-update:hover { background: #e65100; }
+    .btn-query { background: #4caf50; }
+    .btn-query:hover { background: #388e3c; }
+    
+    #error-banner { 
+      display: none; 
+      background: #3f1014; 
+      color: #ff8a8a; 
+      padding: 12px; 
+      margin: 10px auto; 
+      max-width: 900px; 
+      border-radius: 4px; 
+      border-left: 5px solid #d32f2f; 
+      font-weight: bold; 
+    }
+
+    #visualizer-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      overflow-x: auto; 
+      max-width: 100vw;
+      margin: 0 auto;
+      padding-bottom: 25px;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: #aaa;
+      margin: 10px 0 2px 0;
+    }
+
+    /* SVG Tree Styling */
+    .node circle { 
+      fill: #1e1e1e; 
+      stroke-width: 3px; 
+      transition: all 0.4s ease; 
+    }
+    
+    .node text.range-text { font: 10px sans-serif; fill: #90caf9; pointer-events: none; }
+    .node text.main-text { font: 14px sans-serif; font-weight: bold; fill: #e0e0e0; pointer-events: none; }
+    .node text.lazy-badge { font: 11px sans-serif; fill: #ffb74d; font-weight: bold; pointer-events: none; }
+
+    .link { fill: none; stroke: #444; stroke-width: 2px; transition: stroke 0.4s; }
+
+    /* Visual State Overrides */
+    .state-total-overlap circle { stroke: #81c784 !important; stroke-width: 5px !important; fill: #1b3320 !important; }
+    .state-partial circle { stroke: #ffb74d !important; stroke-dasharray: 6,4; }
+    .state-miss circle { stroke: #333 !important; }
+    .state-miss text { fill: #444 !important; }
+    .state-miss text.range-text { fill: #264a7f !important; }
+    .state-miss text.lazy-badge { fill: #664411 !important; }
+
+    /* Lazy Container Highlight */
+    .lazy-node circle { stroke: #ffb74d; }
+    .lazy-has-val circle { stroke: #ffb74d !important; fill: #33230a !important; stroke-width: 4px; }
+  </style>
+</head>
+<body>
+  <h2>Lazy Propagation Visualizer (Part 2)</h2>
+
+  <!-- Setup -->
+  <div class="panel">
+    <div class="help-text">Array Limits: 1 to 16 elements (numbers -999 to 999).</div>
+    <div class="panel-row">
+      <label>Array: <input type="text" id="arrInput" value="1, 3, 5, 7, 9, 11"></label>
+      <button class="btn-build" onclick="buildNewTree()">Build Tree</button>
+    </div>
+  </div>
+
+  <div id="error-banner"></div>
+
+  <!-- Dual Controls -->
+  <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+    <!-- Lazy Range Update -->
+    <div class="panel" style="margin: 0; max-width: 440px;">
+      <div class="help-text">Lazy update an entire range by adding a value.</div>
+      <div class="panel-row">
+        <label>L: <input type="number" id="updLInput" min="0" value="1"></label>
+        <label>R: <input type="number" id="updRInput" min="0" value="4"></label>
+        <label>Add: <input type="number" id="updValInput" value="5"></label>
+        <button class="btn-update" onclick="updateRange()">Range Update</button>
+      </div>
+    </div>
+
+    <!-- Query -->
+    <div class="panel" style="margin: 0; max-width: 440px;">
+      <div class="help-text">Query range sum while triggering deferred lazy cascades.</div>
+      <div class="panel-row">
+        <label>L: <input type="number" id="qLInput" min="0" value="1"></label>
+        <label>R: <input type="number" id="qRInput" min="0" value="4"></label>
+        <button class="btn-query" onclick="queryRange()">Query Sum</button>
+        <span id="query-result" style="font-size: 16px; font-weight: bold; color: #81c784;"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span>Tree Nodes: <b class="color-tree">Blue/Light Blue</b></span> | 
+    <span>Deferred Work (Post-it notes): <b class="color-lazy">Orange (+X)</b></span> | 
+    <span>Total Overlap Action: <b class="color-updated">Green Outline</b></span>
+  </div>
+
+  <div id="visualizer-layout">
+    <div class="section-title">Segment Tree (Values/Sums)</div>
+    <div id="tree-svg"></div>
+  </div>
+
+  <script>
+    let arr = [1, 3, 5, 7, 9, 11];
+    
+    // Explicit tree representations following standard index traversal logic
+    let treeVals = []; 
+    let lazyVals = []; 
+    let n = arr.length;
+
+    // View state trackers
+    let lastQuery = null; 
+    let lastUpdate = null;
+
+    const isValidInteger = (str) => /^-?\d+$/.test(str);
+
+    function showError(msg) {
+      const banner = document.getElementById("error-banner");
+      banner.innerText = msg;
+      banner.style.display = "block";
+    }
+
+    function hideError() {
+      document.getElementById("error-banner").style.display = "none";
+    }
+
+    function computeInitialTree() {
+      treeVals = Array(4 * n).fill(0);
+      lazyVals = Array(4 * n).fill(0);
+
+      function build(node, l, r) {
+        if (l === r) {
+          treeVals[node] = arr[l];
+          return;
+        }
+        const mid = Math.floor((l + r) / 2);
+        build(2 * node + 1, l, mid);
+        build(2 * node + 2, mid + 1, r);
+        treeVals[node] = treeVals[2 * node + 1] + treeVals[2 * node + 2];
+      }
+      build(0, 0, n - 1);
+    }
+
+    function syncLimits() {
+      const maxIdx = n - 1;
+      document.getElementById("updLInput").max = maxIdx;
+      document.getElementById("updRInput").max = maxIdx;
+      document.getElementById("qLInput").max = maxIdx;
+      document.getElementById("qRInput").max = maxIdx;
+    }
+
+    function buildNewTree() {
+      hideError();
+      lastQuery = null;
+      lastUpdate = null;
+      document.getElementById("query-result").innerText = "";
+
+      const rawText = document.getElementById("arrInput").value;
+      if (!rawText.trim()) return showError("Array cannot be empty.");
+
+      const rawItems = rawText.split(',');
+      const parsed = [];
+
+      for (let s of rawItems) {
+        s = s.trim();
+        if (s === "") continue;
+        if (!isValidInteger(s)) return showError(`Invalid item "${s}". Use whole numbers only.`);
+        const num = parseInt(s, 10);
+        if (num < -999 || num > 999) return showError(`Value ${num} exceeds limits (-999 to 999).`);
+        parsed.push(num);
+      }
+
+      if (parsed.length < 1 || parsed.length > 16) return showError("Array size must be between 1 and 16.");
+
+      arr = parsed;
+      n = arr.length;
+      computeInitialTree();
+      syncLimits();
+      renderAll();
+    }
+
+    // Explicit Range Update imitating Lazy Propagation mechanics
+    function updateRange() {
+      hideError();
+      lastQuery = null;
+      document.getElementById("query-result").innerText = "";
+
+      const lStr = document.getElementById("updLInput").value.trim();
+      const rStr = document.getElementById("updRInput").value.trim();
+      const vStr = document.getElementById("updValInput").value.trim();
+
+      if (!isValidInteger(lStr) || !isValidInteger(rStr) || !isValidInteger(vStr)) {
+        return showError("Invalid formats. Check update boundary/value fields.");
+      }
+
+      const ul = parseInt(lStr, 10);
+      const ur = parseInt(rStr, 10);
+      const val = parseInt(vStr, 10);
+
+      if (ul < 0 || ur >= n || ul > ur) return showError(`Invalid Range. Verify 0 <= L <= R <= ${n-1}.`);
+      if (val < -99 || val > 99) return showError("For display legibility, try update values between -99 and +99.");
+
+      lastUpdate = { L: ul, R: ur, val: val };
+
+      // Manual Simulation of range update on values for presentation display
+      function applyUpdate(node, l, r, ql, qr, diff) {
+        // Propagate down
+        if (lazyVals[node] !== 0) {
+          treeVals[node] += (r - l + 1) * lazyVals[node];
+          if (l !== r) {
+            lazyVals[2 * node + 1] += lazyVals[node];
+            lazyVals[2 * node + 2] += lazyVals[node];
+          }
+          lazyVals[node] = 0;
+        }
+
+        if (r < ql || l > qr) return;
+
+        if (ql <= l && r <= qr) {
+          treeVals[node] += (r - l + 1) * diff;
+          if (l !== r) {
+            lazyVals[2 * node + 1] += diff;
+            lazyVals[2 * node + 2] += diff;
+          }
+          return;
+        }
+
+        const mid = Math.floor((l + r) / 2);
+        applyUpdate(2 * node + 1, l, mid, ql, qr, diff);
+        applyUpdate(2 * node + 2, mid + 1, r, ql, qr, diff);
+        treeVals[node] = treeVals[2 * node + 1] + treeVals[2 * node + 2];
+      }
+
+      applyUpdate(0, 0, n - 1, ul, ur, val);
+      renderAll();
+    }
+
+    // Lazy Range Query logic trace
+    function queryRange() {
+      hideError();
+      lastUpdate = null;
+
+      const lStr = document.getElementById("qLInput").value.trim();
+      const rStr = document.getElementById("qRInput").value.trim();
+
+      if (!isValidInteger(lStr) || !isValidInteger(rStr)) {
+        return showError("Formatting error. Range Inputs should be pure integers.");
+      }
+
+      const ql = parseInt(lStr, 10);
+      const qr = parseInt(rStr, 10);
+
+      if (ql < 0 || qr >= n || ql > qr) return showError(`Range should sit between 0 and ${n-1}.`);
+
+      lastQuery = { L: ql, R: qr };
+
+      // Simulates cascading pending lazy updates before retrieving exact values
+      function getValWithCascade(node, l, r, ql, qr) {
+        if (lazyVals[node] !== 0) {
+          treeVals[node] += (r - l + 1) * lazyVals[node];
+          if (l !== r) {
+            lazyVals[2 * node + 1] += lazyVals[node];
+            lazyVals[2 * node + 2] += lazyVals[node];
+          }
+          lazyVals[node] = 0;
+        }
+
+        if (r < ql || l > qr) return 0;
+        if (ql <= l && r <= qr) return treeVals[node];
+
+        const mid = Math.floor((l + r) / 2);
+        return getValWithCascade(2 * node + 1, l, mid, ql, qr) +
+               getValWithCascade(2 * node + 2, mid + 1, r, ql, qr);
+      }
+
+      const sum = getValWithCascade(0, 0, n - 1, ql, qr);
+      document.getElementById("query-result").innerText = `= ${sum}`;
+      renderAll();
+    }
+
+    // Construct unified visual-state model
+    function generateLayoutData(node, l, r) {
+      const rangeStr = (l === r) ? `[${l}]` : `[${l}-${r}]`;
+      const currentVal = treeVals[node];
+      const currentLazy = lazyVals[node];
+
+      // Classify node overlap states based on active commands
+      let activeFocus = "none";
+      const match = (tgt) => tgt && tgt.L <= l && tgt.R >= r;
+      const miss = (tgt) => tgt && (tgt.R < l || tgt.L > r);
+
+      let operation = lastQuery || lastUpdate;
+      if (operation) {
+        if (match(operation)) {
+          activeFocus = "total"; // Complete overlap: applies lazily or evaluates immediately
+        } else if (miss(operation)) {
+          activeFocus = "miss";
+        } else {
+          activeFocus = "partial";
+        }
+      }
+
+      if (l === r) {
+        return { range: rangeStr, val: currentVal, lazy: currentLazy, state: activeFocus };
+      }
+
+      const mid = Math.floor((l + r) / 2);
+      const left = generateLayoutData(2 * node + 1, l, mid);
+      const right = generateLayoutData(2 * node + 2, mid + 1, r);
+
+      return {
+        range: rangeStr, val: currentVal, lazy: currentLazy, state: activeFocus,
+        children: [left, right]
+      };
+    }
+
+    function renderAll() {
+      d3.select("#tree-svg").html("");
+      if (n === 0) return;
+
+      const layoutData = generateLayoutData(0, 0, n - 1);
+
+      const width = Math.max(900, n * 120);
+      const height = 480;
+
+      const svg = d3.select("#tree-svg").append("svg")
+                    .attr("width", width).attr("height", height)
+                    .append("g").attr("transform", "translate(40,40)");
+
+      const root = d3.hierarchy(layoutData);
+      const treeLayout = d3.tree().size([width - 80, height - 80]);
+      treeLayout(root);
+
+      // Links (dim non-overlap paths)
+      svg.selectAll('.link').data(root.links()).enter().append('path')
+         .attr('class', d => d.target.data.state === 'miss' ? 'link state-miss' : 'link')
+         .attr('d', d3.linkVertical().x(d => d.x).y(d => d.y));
+
+      const nodes = svg.selectAll('.node').data(root.descendants()).enter().append('g')
+                        .attr('class', d => {
+                          let c = 'node';
+                          if (d.data.state === 'total') c += ' state-total-overlap';
+                          if (d.data.state === 'partial') c += ' state-partial';
+                          if (d.data.state === 'miss') c += ' state-miss';
+                          return c;
+                        })
+                        .attr('transform', d => `translate(${d.x},${d.y})`);
+
+      nodes.append('circle').attr('r', 42).style('stroke', '#4fc3f7');
+
+      // Labels:
+      // Range 
+      nodes.append('text')
+           .attr('class', 'range-text')
+           .attr('dy', -12)
+           .attr('text-anchor', 'middle')
+           .text(d => d.data.range);
+
+      // Value
+      nodes.append('text')
+           .attr('class', 'main-text')
+           .attr('dy', 5)
+           .attr('text-anchor', 'middle')
+           .text(d => d.data.val);
+
+      // Delayed Badges (Yellow bubble +X)
+      nodes.filter(d => d.data.lazy !== 0).append('g')
+           .attr('transform', 'translate(0, 24)')
+           .call(g => {
+             g.append('rect')
+              .attr('x', -18).attr('y', -7)
+              .attr('width', 36).attr('height', 14)
+              .attr('rx', 4).attr('ry', 4)
+              .style('fill', '#ffe082').style('stroke', '#ffb74d');
+             g.append('text')
+              .attr('class', 'lazy-badge')
+              .attr('dy', 4).attr('text-anchor', 'middle')
+              .text(d => `+${d.data.lazy}`);
+           });
+    }
+
+    // Set Defaults
+    computeInitialTree();
+    syncLimits();
+    renderAll();
+  </script>
+</body>
+</html>
