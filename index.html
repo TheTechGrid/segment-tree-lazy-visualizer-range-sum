@@ -2,73 +2,27 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Lazy Propagation Segment Tree Visualizer</title>
+  <title>Lazy Propagation Visualizer (Part 2)</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <style>
-    body { 
-      font-family: sans-serif; 
-      text-align: center; 
-      margin-top: 25px; 
-      background-color: #121212; 
-      color: #e0e0e0; 
-    }
+    body { font-family: sans-serif; text-align: center; margin-top: 25px; background-color: #121212; color: #e0e0e0; }
     
-    .panel { 
-      background: #1e1e1e; 
-      border: 1px solid #333;
-      border-radius: 8px; 
-      padding: 15px; 
-      margin: 10px auto; 
-      max-width: 900px; 
-      display: flex; 
-      flex-direction: column; 
-      justify-content: center; 
-      gap: 10px; 
-      align-items: center; 
-    }
-    
-    .panel-row {
-      display: flex;
-      gap: 15px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .help-text {
-      font-size: 12px;
-      color: #888;
-      margin-bottom: 3px;
-    }
-
-    .legend {
-      font-size: 11px;
-      color: #aaa;
-      margin-top: 5px;
-    }
+    .panel { background: #1e1e1e; border: 1px solid #333; border-radius: 8px; padding: 15px; margin: 10px auto; max-width: 900px; display: flex; flex-direction: column; justify-content: center; gap: 10px; align-items: center; }
+    .panel-row { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+    .help-text { font-size: 12px; color: #888; margin-bottom: 3px; }
+    .legend { font-size: 11px; color: #aaa; margin-top: 5px; }
     .legend span { margin: 0 8px; }
+    
     .color-tree { color: #4fc3f7; font-weight: bold; }
     .color-lazy { color: #ffb74d; font-weight: bold; }
+    .color-cleared { color: #ce93d8; font-weight: bold; }
     .color-updated { color: #81c784; font-weight: bold; }
     
-    input[type="text"], input[type="number"] { 
-      background: #2c2c2c; 
-      color: #e0e0e0;
-      border: 1px solid #555;
-      border-radius: 4px;
-      padding: 5px;
-    }
+    input[type="text"], input[type="number"] { background: #2c2c2c; color: #e0e0e0; border: 1px solid #555; border-radius: 4px; padding: 5px; }
     input[type="text"] { width: 280px; }
     input[type="number"] { width: 70px; }
     
-    button { 
-      padding: 8px 16px; 
-      cursor: pointer; 
-      color: white; 
-      border: none; 
-      border-radius: 4px; 
-      font-weight: bold; 
-      transition: background 0.2s;
-    }
+    button { padding: 8px 16px; cursor: pointer; color: white; border: none; border-radius: 4px; font-weight: bold; transition: background 0.2s; }
     .btn-build { background: #3b82f6; }
     .btn-build:hover { background: #2563eb; }
     .btn-update { background: #ff9800; }
@@ -76,46 +30,16 @@
     .btn-query { background: #4caf50; }
     .btn-query:hover { background: #388e3c; }
     
-    #error-banner { 
-      display: none; 
-      background: #3f1014; 
-      color: #ff8a8a; 
-      padding: 12px; 
-      margin: 10px auto; 
-      max-width: 900px; 
-      border-radius: 4px; 
-      border-left: 5px solid #d32f2f; 
-      font-weight: bold; 
-    }
-
-    #visualizer-layout {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-      overflow-x: auto; 
-      max-width: 100vw;
-      margin: 0 auto;
-      padding-bottom: 25px;
-    }
-
-    .section-title {
-      font-size: 16px;
-      font-weight: bold;
-      color: #aaa;
-      margin: 10px 0 2px 0;
-    }
-
-    /* SVG Tree Styling */
-    .node circle { 
-      fill: #1e1e1e; 
-      stroke-width: 3px; 
-      transition: all 0.4s ease; 
-    }
+    #error-banner { display: none; background: #3f1014; color: #ff8a8a; padding: 12px; margin: 10px auto; max-width: 900px; border-radius: 4px; border-left: 5px solid #d32f2f; font-weight: bold; }
+    #visualizer-layout { display: flex; flex-direction: column; gap: 20px; overflow-x: auto; max-width: 100vw; margin: 0 auto; padding-bottom: 25px; }
     
+    /* SVG Tree Styling */
+    .node circle { fill: #1e1e1e; stroke-width: 3px; transition: all 0.4s ease; }
     .node text.range-text { font: 10px sans-serif; fill: #90caf9; pointer-events: none; }
     .node text.main-text { font: 14px sans-serif; font-weight: bold; fill: #e0e0e0; pointer-events: none; }
     .node text.lazy-badge { font: 11px sans-serif; fill: #ffb74d; font-weight: bold; pointer-events: none; }
-
+    .node text.cleared-badge { font: 10px sans-serif; fill: #ce93d8; font-weight: bold; pointer-events: none; font-style: italic; }
+    
     .link { fill: none; stroke: #444; stroke-width: 2px; transition: stroke 0.4s; }
 
     /* Visual State Overrides */
@@ -124,17 +48,15 @@
     .state-miss circle { stroke: #333 !important; }
     .state-miss text { fill: #444 !important; }
     .state-miss text.range-text { fill: #264a7f !important; }
-    .state-miss text.lazy-badge { fill: #664411 !important; }
-
-    /* Lazy Container Highlight */
-    .lazy-node circle { stroke: #ffb74d; }
-    .lazy-has-val circle { stroke: #ffb74d !important; fill: #33230a !important; stroke-width: 4px; }
+    
+    /* Propagation Highlight */
+    .prop-cleared circle { stroke: #ce93d8 !important; fill: #2c1a30 !important; stroke-dasharray: none; }
+    .prop-received circle { stroke: #ffb74d !important; fill: #33230a !important; }
   </style>
 </head>
 <body>
   <h2>Lazy Propagation Visualizer (Part 2)</h2>
 
-  <!-- Setup -->
   <div class="panel">
     <div class="help-text">Array Limits: 1 to 16 elements (numbers -999 to 999).</div>
     <div class="panel-row">
@@ -145,9 +67,7 @@
 
   <div id="error-banner"></div>
 
-  <!-- Dual Controls -->
   <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
-    <!-- Lazy Range Update -->
     <div class="panel" style="margin: 0; max-width: 440px;">
       <div class="help-text">Lazy update an entire range by adding a value.</div>
       <div class="panel-row">
@@ -158,7 +78,6 @@
       </div>
     </div>
 
-    <!-- Query -->
     <div class="panel" style="margin: 0; max-width: 440px;">
       <div class="help-text">Query range sum while triggering deferred lazy cascades.</div>
       <div class="panel-row">
@@ -171,49 +90,43 @@
   </div>
 
   <div class="legend">
-    <span>Tree Nodes: <b class="color-tree">Blue/Light Blue</b></span> | 
-    <span>Deferred Work (Post-it notes): <b class="color-lazy">Orange (+X)</b></span> | 
-    <span>Total Overlap Action: <b class="color-updated">Green Outline</b></span>
+    <span>Deferred Work: <b class="color-lazy">Orange (+X)</b></span> | 
+    <span>Pushed Down / Cleared: <b class="color-cleared">Purple (Cleared!)</b></span> | 
+    <span>Total Overlap: <b class="color-updated">Green</b></span>
   </div>
 
   <div id="visualizer-layout">
-    <div class="section-title">Segment Tree (Values/Sums)</div>
     <div id="tree-svg"></div>
   </div>
 
   <script>
     let arr = [1, 3, 5, 7, 9, 11];
-    
-    // Explicit tree representations following standard index traversal logic
     let treeVals = []; 
     let lazyVals = []; 
     let n = arr.length;
 
-    // View state trackers
     let lastQuery = null; 
     let lastUpdate = null;
+    
+    // Tracking sets to highlight propagation events
+    let nodesJustCleared = new Set();
+    let nodesJustReceived = new Set();
 
     const isValidInteger = (str) => /^-?\d+$/.test(str);
 
     function showError(msg) {
-      const banner = document.getElementById("error-banner");
-      banner.innerText = msg;
-      banner.style.display = "block";
+      document.getElementById("error-banner").innerText = msg;
+      document.getElementById("error-banner").style.display = "block";
     }
 
-    function hideError() {
-      document.getElementById("error-banner").style.display = "none";
-    }
+    function hideError() { document.getElementById("error-banner").style.display = "none"; }
 
     function computeInitialTree() {
       treeVals = Array(4 * n).fill(0);
       lazyVals = Array(4 * n).fill(0);
 
       function build(node, l, r) {
-        if (l === r) {
-          treeVals[node] = arr[l];
-          return;
-        }
+        if (l === r) { treeVals[node] = arr[l]; return; }
         const mid = Math.floor((l + r) / 2);
         build(2 * node + 1, l, mid);
         build(2 * node + 2, mid + 1, r);
@@ -224,77 +137,50 @@
 
     function syncLimits() {
       const maxIdx = n - 1;
-      document.getElementById("updLInput").max = maxIdx;
-      document.getElementById("updRInput").max = maxIdx;
-      document.getElementById("qLInput").max = maxIdx;
-      document.getElementById("qRInput").max = maxIdx;
+      document.getElementById("updLInput").max = maxIdx; document.getElementById("updRInput").max = maxIdx;
+      document.getElementById("qLInput").max = maxIdx; document.getElementById("qRInput").max = maxIdx;
     }
 
     function buildNewTree() {
-      hideError();
-      lastQuery = null;
-      lastUpdate = null;
+      hideError(); lastQuery = null; lastUpdate = null; nodesJustCleared.clear(); nodesJustReceived.clear();
       document.getElementById("query-result").innerText = "";
 
       const rawText = document.getElementById("arrInput").value;
-      if (!rawText.trim()) return showError("Array cannot be empty.");
+      const parsed = rawText.split(',').map(s => s.trim()).filter(s => s).map(s => parseInt(s, 10));
+      if (parsed.some(isNaN)) return showError("Invalid input format.");
 
-      const rawItems = rawText.split(',');
-      const parsed = [];
-
-      for (let s of rawItems) {
-        s = s.trim();
-        if (s === "") continue;
-        if (!isValidInteger(s)) return showError(`Invalid item "${s}". Use whole numbers only.`);
-        const num = parseInt(s, 10);
-        if (num < -999 || num > 999) return showError(`Value ${num} exceeds limits (-999 to 999).`);
-        parsed.push(num);
-      }
-
-      if (parsed.length < 1 || parsed.length > 16) return showError("Array size must be between 1 and 16.");
-
-      arr = parsed;
-      n = arr.length;
-      computeInitialTree();
-      syncLimits();
-      renderAll();
+      arr = parsed; n = arr.length;
+      computeInitialTree(); syncLimits(); renderAll();
     }
 
-    // Explicit Range Update imitating Lazy Propagation mechanics
+    // Handles the actual push-down logic and records it for the visualizer
+    function pushDown(node, l, r) {
+      if (lazyVals[node] !== 0) {
+        treeVals[node] += (r - l + 1) * lazyVals[node];
+        nodesJustCleared.add(node); // Record clearing
+        
+        if (l !== r) {
+          lazyVals[2 * node + 1] += lazyVals[node];
+          lazyVals[2 * node + 2] += lazyVals[node];
+          nodesJustReceived.add(2 * node + 1); // Record receiving
+          nodesJustReceived.add(2 * node + 2);
+        }
+        lazyVals[node] = 0;
+      }
+    }
+
     function updateRange() {
-      hideError();
-      lastQuery = null;
+      hideError(); lastQuery = null; nodesJustCleared.clear(); nodesJustReceived.clear();
       document.getElementById("query-result").innerText = "";
 
-      const lStr = document.getElementById("updLInput").value.trim();
-      const rStr = document.getElementById("updRInput").value.trim();
-      const vStr = document.getElementById("updValInput").value.trim();
-
-      if (!isValidInteger(lStr) || !isValidInteger(rStr) || !isValidInteger(vStr)) {
-        return showError("Invalid formats. Check update boundary/value fields.");
-      }
-
-      const ul = parseInt(lStr, 10);
-      const ur = parseInt(rStr, 10);
-      const val = parseInt(vStr, 10);
-
-      if (ul < 0 || ur >= n || ul > ur) return showError(`Invalid Range. Verify 0 <= L <= R <= ${n-1}.`);
-      if (val < -99 || val > 99) return showError("For display legibility, try update values between -99 and +99.");
+      const ul = parseInt(document.getElementById("updLInput").value, 10);
+      const ur = parseInt(document.getElementById("updRInput").value, 10);
+      const val = parseInt(document.getElementById("updValInput").value, 10);
 
       lastUpdate = { L: ul, R: ur, val: val };
 
-      // Manual Simulation of range update on values for presentation display
       function applyUpdate(node, l, r, ql, qr, diff) {
-        // Propagate down
-        if (lazyVals[node] !== 0) {
-          treeVals[node] += (r - l + 1) * lazyVals[node];
-          if (l !== r) {
-            lazyVals[2 * node + 1] += lazyVals[node];
-            lazyVals[2 * node + 2] += lazyVals[node];
-          }
-          lazyVals[node] = 0;
-        }
-
+        pushDown(node, l, r);
         if (r < ql || l > qr) return;
 
         if (ql <= l && r <= qr) {
@@ -316,36 +202,16 @@
       renderAll();
     }
 
-    // Lazy Range Query logic trace
     function queryRange() {
-      hideError();
-      lastUpdate = null;
+      hideError(); lastUpdate = null; nodesJustCleared.clear(); nodesJustReceived.clear();
 
-      const lStr = document.getElementById("qLInput").value.trim();
-      const rStr = document.getElementById("qRInput").value.trim();
-
-      if (!isValidInteger(lStr) || !isValidInteger(rStr)) {
-        return showError("Formatting error. Range Inputs should be pure integers.");
-      }
-
-      const ql = parseInt(lStr, 10);
-      const qr = parseInt(rStr, 10);
-
-      if (ql < 0 || qr >= n || ql > qr) return showError(`Range should sit between 0 and ${n-1}.`);
+      const ql = parseInt(document.getElementById("qLInput").value, 10);
+      const qr = parseInt(document.getElementById("qRInput").value, 10);
 
       lastQuery = { L: ql, R: qr };
 
-      // Simulates cascading pending lazy updates before retrieving exact values
       function getValWithCascade(node, l, r, ql, qr) {
-        if (lazyVals[node] !== 0) {
-          treeVals[node] += (r - l + 1) * lazyVals[node];
-          if (l !== r) {
-            lazyVals[2 * node + 1] += lazyVals[node];
-            lazyVals[2 * node + 2] += lazyVals[node];
-          }
-          lazyVals[node] = 0;
-        }
-
+        pushDown(node, l, r);
         if (r < ql || l > qr) return 0;
         if (ql <= l && r <= qr) return treeVals[node];
 
@@ -359,40 +225,29 @@
       renderAll();
     }
 
-    // Construct unified visual-state model
     function generateLayoutData(node, l, r) {
       const rangeStr = (l === r) ? `[${l}]` : `[${l}-${r}]`;
-      const currentVal = treeVals[node];
-      const currentLazy = lazyVals[node];
-
-      // Classify node overlap states based on active commands
       let activeFocus = "none";
-      const match = (tgt) => tgt && tgt.L <= l && tgt.R >= r;
-      const miss = (tgt) => tgt && (tgt.R < l || tgt.L > r);
-
-      let operation = lastQuery || lastUpdate;
-      if (operation) {
-        if (match(operation)) {
-          activeFocus = "total"; // Complete overlap: applies lazily or evaluates immediately
-        } else if (miss(operation)) {
-          activeFocus = "miss";
-        } else {
-          activeFocus = "partial";
-        }
+      const op = lastQuery || lastUpdate;
+      
+      if (op) {
+        if (op.L <= l && op.R >= r) activeFocus = "total";
+        else if (op.R < l || op.L > r) activeFocus = "miss";
+        else activeFocus = "partial";
       }
 
-      if (l === r) {
-        return { range: rangeStr, val: currentVal, lazy: currentLazy, state: activeFocus };
-      }
-
-      const mid = Math.floor((l + r) / 2);
-      const left = generateLayoutData(2 * node + 1, l, mid);
-      const right = generateLayoutData(2 * node + 2, mid + 1, r);
-
-      return {
-        range: rangeStr, val: currentVal, lazy: currentLazy, state: activeFocus,
-        children: [left, right]
+      const data = { 
+        range: rangeStr, val: treeVals[node], lazy: lazyVals[node], 
+        state: activeFocus, 
+        justCleared: nodesJustCleared.has(node), 
+        justReceived: nodesJustReceived.has(node) 
       };
+
+      if (l !== r) {
+        const mid = Math.floor((l + r) / 2);
+        data.children = [generateLayoutData(2 * node + 1, l, mid), generateLayoutData(2 * node + 2, mid + 1, r)];
+      }
+      return data;
     }
 
     function renderAll() {
@@ -400,7 +255,6 @@
       if (n === 0) return;
 
       const layoutData = generateLayoutData(0, 0, n - 1);
-
       const width = Math.max(900, n * 120);
       const height = 480;
 
@@ -412,7 +266,6 @@
       const treeLayout = d3.tree().size([width - 80, height - 80]);
       treeLayout(root);
 
-      // Links (dim non-overlap paths)
       svg.selectAll('.link').data(root.links()).enter().append('path')
          .attr('class', d => d.target.data.state === 'miss' ? 'link state-miss' : 'link')
          .attr('d', d3.linkVertical().x(d => d.x).y(d => d.y));
@@ -420,50 +273,40 @@
       const nodes = svg.selectAll('.node').data(root.descendants()).enter().append('g')
                         .attr('class', d => {
                           let c = 'node';
-                          if (d.data.state === 'total') c += ' state-total-overlap';
-                          if (d.data.state === 'partial') c += ' state-partial';
-                          if (d.data.state === 'miss') c += ' state-miss';
+                          if (d.data.justCleared) c += ' prop-cleared';
+                          else if (d.data.justReceived) c += ' prop-received';
+                          else {
+                            if (d.data.state === 'total') c += ' state-total-overlap';
+                            if (d.data.state === 'partial') c += ' state-partial';
+                            if (d.data.state === 'miss') c += ' state-miss';
+                          }
                           return c;
                         })
                         .attr('transform', d => `translate(${d.x},${d.y})`);
 
       nodes.append('circle').attr('r', 42).style('stroke', '#4fc3f7');
 
-      // Labels:
-      // Range 
-      nodes.append('text')
-           .attr('class', 'range-text')
-           .attr('dy', -12)
-           .attr('text-anchor', 'middle')
-           .text(d => d.data.range);
+      nodes.append('text').attr('class', 'range-text').attr('dy', -12).attr('text-anchor', 'middle').text(d => d.data.range);
+      nodes.append('text').attr('class', 'main-text').attr('dy', 5).attr('text-anchor', 'middle').text(d => d.data.val);
 
-      // Value
-      nodes.append('text')
-           .attr('class', 'main-text')
-           .attr('dy', 5)
-           .attr('text-anchor', 'middle')
-           .text(d => d.data.val);
-
-      // Delayed Badges (Yellow bubble +X)
-      nodes.filter(d => d.data.lazy !== 0).append('g')
+      // Render Active Lazy Badges
+      nodes.filter(d => d.data.lazy !== 0 && !d.data.justCleared).append('g')
            .attr('transform', 'translate(0, 24)')
            .call(g => {
-             g.append('rect')
-              .attr('x', -18).attr('y', -7)
-              .attr('width', 36).attr('height', 14)
-              .attr('rx', 4).attr('ry', 4)
+             g.append('rect').attr('x', -18).attr('y', -7).attr('width', 36).attr('height', 14).attr('rx', 4).attr('ry', 4)
               .style('fill', '#ffe082').style('stroke', '#ffb74d');
-             g.append('text')
-              .attr('class', 'lazy-badge')
-              .attr('dy', 4).attr('text-anchor', 'middle')
-              .text(d => `+${d.data.lazy}`);
+             g.append('text').attr('class', 'lazy-badge').attr('dy', 4).attr('text-anchor', 'middle').text(d => `+${d.data.lazy}`);
            });
+
+      // Render "Cleared" Badges for nodes that just pushed their work down
+      nodes.filter(d => d.data.justCleared).append('text')
+           .attr('class', 'cleared-badge')
+           .attr('dy', 26)
+           .attr('text-anchor', 'middle')
+           .text("Cleared!");
     }
 
-    // Set Defaults
-    computeInitialTree();
-    syncLimits();
-    renderAll();
+    computeInitialTree(); syncLimits(); renderAll();
   </script>
 </body>
 </html>
